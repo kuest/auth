@@ -8,5 +8,9 @@ export interface Env {
   APP_ICON?: string
   CLOB_URL?: string
   RELAYER_URL?: string
+  CLOB_URL_AMOY?: string
+  RELAYER_URL_AMOY?: string
+  CLOB_URL_MAINNET?: string
+  RELAYER_URL_MAINNET?: string
   POSTGRES_URL?: string
 }

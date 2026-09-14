@@ -17,6 +17,7 @@ export interface CreateKuestKeyInput {
   signature: string
   timestamp: string
   nonce: string
+  chainId: number
 }
 
 export interface KuestAuthContext {
@@ -24,6 +25,7 @@ export interface KuestAuthContext {
   apiKey: string
   apiSecret: string
   passphrase: string
+  chainId: number
 }
 
 export interface KuestKeyMetadata {

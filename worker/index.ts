@@ -4,7 +4,11 @@ import type { Env } from './types'
 import { HttpError, json, noContent, readJsonBody, requireMethod, requireString } from './http'
 import { createKuestKey, listKuestKeyMetadata, revokeKuestKey } from './kuest'
 import { saveKeyEmail } from './postgres'
-import { getRuntimeConfig } from './runtime-config'
+import {
+  AMOY_CHAIN_ID,
+  getRuntimeConfig,
+  POLYGON_MAINNET_CHAIN_ID,
+} from './runtime-config'
 
 function parseCreateKuestKeyInput(payload: unknown): CreateKuestKeyInput {
   const record = requireRecord(payload)
@@ -13,6 +17,7 @@ function parseCreateKuestKeyInput(payload: unknown): CreateKuestKeyInput {
     signature: requireString(record.signature, 'signature'),
     timestamp: requireString(record.timestamp, 'timestamp'),
     nonce: requireString(record.nonce, 'nonce', { allowEmpty: true }),
+    chainId: requireChainId(record.chainId),
   }
 }
 
@@ -23,7 +28,19 @@ function parseAuthContext(payload: unknown): KuestAuthContext {
     apiKey: requireString(record.apiKey, 'apiKey'),
     apiSecret: requireString(record.apiSecret, 'apiSecret'),
     passphrase: requireString(record.passphrase, 'passphrase'),
+    chainId: requireChainId(record.chainId),
   }
+}
+
+function requireChainId(value: unknown) {
+  if (
+    typeof value !== 'number'
+    || !Number.isSafeInteger(value)
+    || (value !== AMOY_CHAIN_ID && value !== POLYGON_MAINNET_CHAIN_ID)
+  ) {
+    throw new HttpError(400, 'chainId must be Polygon Amoy (80002) or Polygon Mainnet (137).')
+  }
+  return value
 }
 
 function requireRecord(payload: unknown): Record<string, unknown> {

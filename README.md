@@ -15,7 +15,12 @@ The UI is a React/Vite static asset bundle, and all `/api/*` requests are handle
 
 Public fixed config lives in `wrangler.jsonc` under `vars`:
 `KUEST_CHAIN_MODE`, `SITE_NAME`, `APP_URL`, `APP_ICON`, `CLOB_URL`,
-`RELAYER_URL`, and `KUEST_DEBUG_ERRORS`.
+`RELAYER_URL`, `CLOB_URL_AMOY`, `RELAYER_URL_AMOY`, `CLOB_URL_MAINNET`,
+`RELAYER_URL_MAINNET`, and `KUEST_DEBUG_ERRORS`.
+
+The Auth UI defaults to the configured `KUEST_CHAIN_MODE` and exposes Amoy/Mainnet
+in Advanced options. Each network must point to its own CLOB and Relayer URLs;
+credentials are derived independently from the wallet and chain ID.
 
 For local development, copy `.dev.vars.example` to `.dev.vars`. For production, set the remaining values as Worker secrets/variables in Cloudflare.
 

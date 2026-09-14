@@ -3,21 +3,27 @@
   "name": "auth",
   "main": "worker/index.ts",
   "compatibility_date": "2026-05-29",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
   "vars": {
     "KUEST_CHAIN_MODE": "amoy",
     "SITE_NAME": "Kuest",
     "APP_URL": "https://auth.kuest.com",
     "APP_ICON": "https://auth.kuest.com/kuest-logo.svg",
-    "CLOB_URL": "https://clob.kuest.com",
-    "RELAYER_URL": "https://relayer.kuest.com",
-    "KUEST_DEBUG_ERRORS": "false",
+    "CLOB_URL": "https://clob-staging.kuest.com",
+    "RELAYER_URL": "https://relayer-staging.kuest.com",
+    "CLOB_URL_AMOY": "https://clob-staging.kuest.com",
+    "RELAYER_URL_AMOY": "https://relayer-staging.kuest.com",
+    "CLOB_URL_MAINNET": "https://clob.kuest.com",
+    "RELAYER_URL_MAINNET": "https://relayer.kuest.com",
+    "KUEST_DEBUG_ERRORS": "false"
   },
   "assets": {
     "not_found_handling": "single-page-application",
-    "run_worker_first": ["/api/*"],
+    "run_worker_first": ["/api/*"]
   },
   "observability": {
-    "enabled": true,
-  },
+    "enabled": true
+  }
 }
