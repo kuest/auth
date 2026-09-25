@@ -17,31 +17,31 @@
     "prepare": "vp config"
   },
   "dependencies": {
-    "@reown/appkit": "1.8.23",
-    "@reown/appkit-adapter-wagmi": "1.8.23",
-    "@tanstack/react-query": "5.101.4",
-    "lucide-react": "1.33.0",
+    "@reown/appkit": "1.8.24",
+    "@reown/appkit-adapter-wagmi": "1.8.24",
+    "@tanstack/react-query": "5.103.1",
+    "lucide-react": "1.47.0",
     "postgres": "3.4.9",
-    "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "viem": "2.55.19",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "viem": "2.56.8",
     "wagmi": "2.19.5"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.53.1",
-    "@cloudflare/workers-types": "5.20260821.1",
+    "@cloudflare/vite-plugin": "1.55.0",
+    "@cloudflare/workers-types": "5.20260918.1",
     "@tailwindcss/vite": "4.3.3",
-    "@types/node": "26.2.0",
-    "@types/react": "19.2.18",
-    "@types/react-dom": "19.2.4",
-    "@vitejs/plugin-react": "6.1.0",
+    "@types/node": "26.6.1",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.1",
     "eslint-plugin-react-you-might-not-need-an-effect": "1.0.2",
-    "knip": "6.32.2",
+    "knip": "6.37.0",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
     "vite": "catalog:",
     "vite-plus": "catalog:",
-    "wrangler": "4.125.0"
+    "wrangler": "4.134.0"
   },
   "engines": {
     "node": "24.x"
