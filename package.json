@@ -4,7 +4,7 @@
   "description": "Kuest API credential generator",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kuestcom/auth.git"
+    "url": "https://github.com/kuest/auth.git"
   },
   "type": "module",
   "scripts": {
