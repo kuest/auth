@@ -28,7 +28,7 @@
     "wagmi": "2.19.5"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.60.1",
+    "@cloudflare/vite-plugin": "1.64.0",
     "@cloudflare/workers-types": "5.20260925.1",
     "@tailwindcss/vite": "4.3.3",
     "@types/node": "26.6.2",
@@ -41,7 +41,7 @@
     "typescript": "7.0.2",
     "vite": "catalog:",
     "vite-plus": "catalog:",
-    "wrangler": "4.140.0"
+    "wrangler": "4.152.0"
   },
   "engines": {
     "node": "24.x"
