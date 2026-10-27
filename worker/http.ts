@@ -61,11 +61,3 @@ export function requireString(value: unknown, field: string, options: { allowEmp
 
   return normalized
 }
-
-export async function readJsonSafely(response: Response) {
-  try {
-    return (await response.json()) as unknown
-  } catch {
-    return null
-  }
-}

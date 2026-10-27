@@ -15,7 +15,6 @@
     "RELAYER_URL_AMOY": "https://relayer-staging.kuest.com",
     "CLOB_URL_MAINNET": "https://clob.kuest.com",
     "RELAYER_URL_MAINNET": "https://relayer.kuest.com",
-    "KUEST_DEBUG_ERRORS": "false",
   },
   "assets": {
     "not_found_handling": "single-page-application",

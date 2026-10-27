@@ -16,7 +16,20 @@ The UI is a React/Vite static asset bundle, and all `/api/*` requests are handle
 Public fixed config lives in `wrangler.jsonc` under `vars`:
 `KUEST_CHAIN_MODE`, `SITE_NAME`, `APP_URL`, `APP_ICON`, `CLOB_URL`,
 `RELAYER_URL`, `CLOB_URL_AMOY`, `RELAYER_URL_AMOY`, `CLOB_URL_MAINNET`,
-`RELAYER_URL_MAINNET`, and `KUEST_DEBUG_ERRORS`.
+`RELAYER_URL_MAINNET`.
+
+`/api/kuest/create-key`, `/api/kuest/list-keys`, and `/api/kuest/revoke-key`
+return `400` for malformed requests rejected by Kuest, `401` for rejected
+signatures or API credentials, `403` for denied access, and `429` for rate
+limits. Failed upstream services, differing rejections, and partial key
+creation return `502`. Key listing retains the existing behavior of returning
+nonempty results from one service, but it does not treat an empty response
+from one service as proof of no keys when the other service fails. Revocation
+succeeds if either service confirms it. The JSON error shape remains
+`{ "error": { "message": "..." } }`.
+After a `401` while creating a key, sign again in the wallet; the signed
+timestamp may have expired while awaiting approval. A failed key listing does
+not discard the credentials held in the current UI session.
 
 The Auth UI defaults to the configured `KUEST_CHAIN_MODE` and exposes Amoy/Mainnet
 in Advanced options. Each network must point to its own CLOB and Relayer URLs;
@@ -45,6 +58,7 @@ npm run dev
 ```bash
 npm run check
 npm run build
+npm test
 ```
 
 ## Deploy

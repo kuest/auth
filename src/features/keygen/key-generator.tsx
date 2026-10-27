@@ -548,14 +548,6 @@ function KeyGeneratorContent({ account, runtimeConfig }: KeyGeneratorContentProp
         ...previous,
         [selectedChainMode]: [],
       }))
-      if (error instanceof Error && /401|403/.test(message)) {
-        setBundles((previous) => {
-          const next = { ...previous }
-          delete next[selectedChainMode]
-          return next
-        })
-        setKeysHelper('Credentials look invalid. Generate a new API key to continue.')
-      }
     } finally {
       setKeysLoading(false)
     }

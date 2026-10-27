@@ -2,34 +2,54 @@ import type { CreateKuestKeyInput, KuestAuthContext, KuestKeyBundle, KuestKeyMet
 import type { Env } from './types'
 
 import { hmacSha256Base64Url } from './crypto'
-import { HttpError, readJsonSafely } from './http'
-import { getKuestBaseUrls, kuestDebugErrorsEnabled } from './runtime-config'
+import { HttpError } from './http'
+import { getKuestBaseUrls } from './runtime-config'
 
-function sanitizeKuestMessage(env: Env, status: number | undefined, rawMessage?: string) {
-  const normalized = (rawMessage ?? '').replace(/\s+/g, ' ').trim()
-  const truncated = normalized.slice(0, 200)
+type KuestAction = 'create' | 'list' | 'revoke'
 
-  let sanitized: string
-  if (status === 401 || status === 403) {
-    sanitized = 'Credentials rejected by Kuest. Generate a fresh API key and try again.'
-  } else if (status === 429) {
-    sanitized = 'Too many requests. Hold on a moment before retrying.'
-  } else if (status === 500 || status === 503) {
-    sanitized = 'Kuest is temporarily unavailable. Retry shortly.'
-  } else if (truncated.length > 0) {
-    sanitized = truncated
-  } else {
-    sanitized = 'Kuest request failed. Please try again.'
+function upstreamError(status: number, action: KuestAction) {
+  if (status === 400) {
+    return new HttpError(
+      400,
+      action === 'create' ? 'Invalid wallet signature or request. Please sign again.' : 'Invalid Kuest request.',
+    )
   }
+  if (status === 401) {
+    return new HttpError(
+      401,
+      action === 'create'
+        ? 'Wallet signature expired or was rejected. Please sign again.'
+        : 'Kuest rejected these API credentials. Check them and try again.',
+    )
+  }
+  if (status === 403) {
+    return new HttpError(403, 'Kuest denied access to this operation.')
+  }
+  if (status === 429) {
+    return new HttpError(429, 'Too many requests. Hold on a moment before retrying.')
+  }
+  return new HttpError(502, 'Kuest request failed. Please try again shortly.')
+}
 
-  if (kuestDebugErrorsEnabled(env) && truncated.length > 0) {
-    if (sanitized === truncated) {
-      return truncated
+function combinedFailure(failures: Error[], targetCount: number, action: KuestAction) {
+  if (failures.length === targetCount) {
+    const first = failures[0]
+    if (
+      first instanceof HttpError &&
+      first.status < 500 &&
+      failures.every((failure) => failure instanceof HttpError && failure.status === first.status)
+    ) {
+      return first
     }
-    return `${truncated} - ${sanitized}`
   }
 
-  return sanitized
+  const message =
+    action === 'create'
+      ? 'Failed to generate API key on all services.'
+      : action === 'list'
+        ? 'Failed to load keys from all services.'
+        : 'Failed to revoke key on all services.'
+  return new HttpError(502, message)
 }
 
 function normalizeKeyBundle(payload: unknown): KuestKeyBundle {
@@ -81,7 +101,6 @@ function normalizeKeyBundle(payload: unknown): KuestKeyBundle {
 }
 
 async function requestKuestKey(
-  env: Env,
   baseUrl: string,
   { address, signature, timestamp, nonce }: CreateKuestKeyInput,
   options: {
@@ -103,29 +122,21 @@ async function requestKuestKey(
   })
 
   if (!response.ok) {
-    let message = 'Failed to generate API key.'
-    const errorPayload = await readJsonSafely(response)
-    if (errorPayload && typeof errorPayload === 'object') {
-      message = (errorPayload as { message?: string }).message ?? (errorPayload as { error?: string }).error ?? message
-    }
-
-    const sanitized = sanitizeKuestMessage(env, response.status, message)
     console.warn('[kuest] create key failed', {
       baseUrl,
       status: response.status,
-      message,
     })
-    throw new HttpError(502, sanitized)
+    throw upstreamError(response.status, 'create')
   }
 
   const data = await response.json()
   return normalizeKeyBundle(data)
 }
 
-async function deriveExistingKuestKey(env: Env, targets: string[], input: CreateKuestKeyInput) {
+async function deriveExistingKuestKey(targets: string[], input: CreateKuestKeyInput) {
   const results = await Promise.allSettled(
     targets.map((baseUrl) =>
-      requestKuestKey(env, baseUrl, input, {
+      requestKuestKey(baseUrl, input, {
         path: '/auth/derive-api-key',
         method: 'GET',
       }),
@@ -151,7 +162,7 @@ async function deriveExistingKuestKey(env: Env, targets: string[], input: Create
 
 export async function createKuestKey(env: Env, input: CreateKuestKeyInput) {
   const targets = getKuestBaseUrls(env, input.chainId)
-  const results = await Promise.allSettled(targets.map((baseUrl) => requestKuestKey(env, baseUrl, input)))
+  const results = await Promise.allSettled(targets.map((baseUrl) => requestKuestKey(baseUrl, input)))
 
   const values: KuestKeyBundle[] = []
   const failures: Error[] = []
@@ -165,17 +176,16 @@ export async function createKuestKey(env: Env, input: CreateKuestKeyInput) {
   }
 
   if (failures.length > 0) {
-    if (failures.length === targets.length) {
-      const recovered = await deriveExistingKuestKey(env, targets, input)
+    if (
+      failures.length === targets.length &&
+      failures.every((failure) => !(failure instanceof HttpError) || failure.status >= 500)
+    ) {
+      const recovered = await deriveExistingKuestKey(targets, input)
       if (recovered) {
         return recovered
       }
     }
-
-    const normalized = failures[0]
-    const prefix =
-      failures.length === targets.length ? 'Failed to generate API key.' : 'Failed to generate API key on all services.'
-    throw new HttpError(502, `${prefix} ${normalized.message}`)
+    throw combinedFailure(failures, targets.length, 'create')
   }
 
   if (values.length === 0) {
@@ -307,7 +317,7 @@ function mergeKuestKeyMetadata(existing: KuestKeyMetadata, incoming: KuestKeyMet
   }
 }
 
-async function fetchKeysFrom(baseUrl: string, env: Env, auth: KuestAuthContext) {
+async function fetchKeysFrom(baseUrl: string, auth: KuestAuthContext) {
   const path = '/auth/api-keys'
   const url = new URL(path, baseUrl)
   url.searchParams.set('metadata', 'true')
@@ -334,13 +344,7 @@ async function fetchKeysFrom(baseUrl: string, env: Env, auth: KuestAuthContext) 
   })
 
   if (!response.ok) {
-    let message = 'Failed to load keys.'
-    const payload = await readJsonSafely(response)
-    if (payload && typeof payload === 'object') {
-      message = (payload as { message?: string }).message ?? (payload as { error?: string }).error ?? message
-    }
-    const sanitized = sanitizeKuestMessage(env, response.status, message)
-    throw new HttpError(502, sanitized)
+    throw upstreamError(response.status, 'list')
   }
 
   const data = await response.json()
@@ -354,32 +358,33 @@ async function fetchKeysFrom(baseUrl: string, env: Env, auth: KuestAuthContext) 
 export async function listKuestKeyMetadata(env: Env, auth: KuestAuthContext) {
   const targets = getKuestBaseUrls(env, auth.chainId)
   const keys = new Map<string, KuestKeyMetadata>()
-  let lastError: Error | null = null
+  const failures: Error[] = []
 
   for (const baseUrl of targets) {
     try {
-      const fetched = await fetchKeysFrom(baseUrl, env, auth)
+      const fetched = await fetchKeysFrom(baseUrl, auth)
       fetched.forEach((key) => {
         const existing = keys.get(key.apiKey)
         keys.set(key.apiKey, existing ? mergeKuestKeyMetadata(existing, key) : key)
       })
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error))
+      const failure = error instanceof Error ? error : new Error(String(error))
+      failures.push(failure)
       console.warn('[kuest] list keys failed', {
         baseUrl,
-        message: lastError.message,
+        message: failure.message,
       })
     }
   }
 
-  if (keys.size > 0) {
+  if (keys.size > 0 || failures.length === 0) {
     return Array.from(keys.values())
   }
 
-  throw lastError ?? new Error('Failed to load keys.')
+  throw combinedFailure(failures, targets.length, 'list')
 }
 
-async function revokeKeyOn(baseUrl: string, env: Env, auth: KuestAuthContext, apiKey: string) {
+async function revokeKeyOn(baseUrl: string, auth: KuestAuthContext, apiKey: string) {
   const path = '/auth/api-key'
   const url = new URL(path, baseUrl)
   url.searchParams.set('apiKey', apiKey)
@@ -405,30 +410,25 @@ async function revokeKeyOn(baseUrl: string, env: Env, auth: KuestAuthContext, ap
   })
 
   if (!response.ok) {
-    let message = 'Failed to revoke key.'
-    const payload = await readJsonSafely(response)
-    if (payload && typeof payload === 'object') {
-      message = (payload as { message?: string }).message ?? (payload as { error?: string }).error ?? message
-    }
-    const sanitized = sanitizeKuestMessage(env, response.status, message)
-    throw new HttpError(502, sanitized)
+    throw upstreamError(response.status, 'revoke')
   }
 }
 
 export async function revokeKuestKey(env: Env, auth: KuestAuthContext, apiKey: string) {
   const targets = getKuestBaseUrls(env, auth.chainId)
   let success = false
-  let lastError: Error | null = null
+  const failures: Error[] = []
 
   for (const baseUrl of targets) {
     try {
-      await revokeKeyOn(baseUrl, env, auth, apiKey)
+      await revokeKeyOn(baseUrl, auth, apiKey)
       success = true
     } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error))
+      const failure = error instanceof Error ? error : new Error(String(error))
+      failures.push(failure)
       console.warn('[kuest] revoke key failed', {
         baseUrl,
-        message: lastError.message,
+        message: failure.message,
       })
     }
   }
@@ -437,5 +437,5 @@ export async function revokeKuestKey(env: Env, auth: KuestAuthContext, apiKey: s
     return true
   }
 
-  throw lastError ?? new Error('Failed to revoke key.')
+  throw combinedFailure(failures, targets.length, 'revoke')
 }

@@ -16,11 +16,6 @@ function firstEnv(env: Env, ...keys: Array<keyof Env>) {
   return ''
 }
 
-function flagEnabled(value: string | undefined) {
-  const normalized = value?.trim().toLowerCase()
-  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on'
-}
-
 export function getRuntimeConfig(env: Env): RuntimeConfig {
   const siteName = firstEnv(env, 'SITE_NAME') || 'Kuest'
   const chainModeRaw = firstEnv(env, 'KUEST_CHAIN_MODE').toLowerCase()
@@ -89,8 +84,4 @@ export function getKuestBaseUrls(env: Env, chainId: number) {
     )
   }
   return unique
-}
-
-export function kuestDebugErrorsEnabled(env: Env) {
-  return flagEnabled(env.KUEST_DEBUG_ERRORS)
 }

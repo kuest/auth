@@ -9,6 +9,7 @@
   "type": "module",
   "scripts": {
     "dev": "vp dev",
+    "test": "node --test tests/*.test.mjs",
     "build": "vp build",
     "knip": "knip --fix",
     "check": "vp check --fix",
